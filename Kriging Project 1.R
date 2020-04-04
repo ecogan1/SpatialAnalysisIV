@@ -63,7 +63,7 @@ incivility.vario.wls <-variofit(incivility.vario, ini.cov.pars=c(30,.06),cov.mod
 incivility.vario.wls
 plot(incivility.vario.wls)
 
-summy(nif.geo) - To determine grid max and min
+summary(nif.geo) - To determine grid max and min
 
 
 grid<-expand.grid(Long=seq(-76.71,-76.53),
