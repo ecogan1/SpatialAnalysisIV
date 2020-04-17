@@ -1,0 +1,88 @@
+Project 2
+
+library(rgdal)
+library(geoR)
+library(spatstat)
+library(splancs)
+library(maptools)
+library(maps)
+
+library(spdep)
+library(maptools)
+library(classInt)
+library(RColorBrewer)
+library(rgdal)
+library(sp)
+install.packages("raster")
+library(raster)
+setwd("C:/Users/emmae/OneC:\Users\emmae\OneDrive\Desktop\R_Github\SpatialAnalysisIV\Project 2Drive/Desktop/R_Github/SpatialAnalysisIV/Project 2")
+
+##I am going to load the Balt City fast food data here.
+
+fast_food <-readOGR("Balt_city_Fast_food.shp")
+summary(fast_food)
+View(fast_food)
+plot(fast_food$Count_)
+
+## Creating map of fast food adjustedf for population
+plotvar0<-fast_food$pop_adj
+nclr<-5
+plotclr<-brewer.pal(nclr,"YlOrBr")
+class<-classIntervals(plotvar0,nclr,style="quantile")
+colcode<-findColours(class,plotclr)
+plot(fast_food,col=colcode, )
+
+## Here I am going to read in the NIEFTY data from assignment 1 for incivility scores
+
+library(readxl)
+nif<- read_excel("Copy of NIFETY Data_remove2.xlsx")
+View(nif)
+summary(nif)
+nif.geo <- as.geodata(nif, coords.col = 2:3, data.col = 1)
+summary(nif.geo)
+plot(nif.geo)
+
+##Creating Semivariogram for Nif data
+maxdist <- .2063272
+incivility.vario<- variog(nif.geo, max.dist = maxdist/2)
+plot(incivility.vario)
+incivility.vario.wls <-variofit(incivility.vario, ini.cov.pars=c(30,.06),cov.model="spherical",
+                                nugget=25,weights="cressie")
+
+## Kriging for spaital smoothing
+grid <- expand.grid(east = seq(-76.71029, -76.52973, length = 50), north = seq(39.2237, 39.3721, length = 50))
+OK.pred<-krige.conv(nif.geo,locations=grid,krige=krige.control(obj.model=incivility.vario.wls))
+image(OK.pred)
+summary(OK.pred)
+View(OK.pred)
+
+
+## Here I am going to read in the spatial join file that I created in ArcGIS, taking the average of the  incivility scores in each cenesus tract
+incivility.join <-readOGR("avg_incivil_food.shp")
+View(incivility.join)
+
+plotvar1<-incivility.join$Avg_Incivi
+nclr<-5
+plotclr<-brewer.pal(nclr,"YlOrBr")
+class<-classIntervals(plotvar0,nclr,style="quantile")
+colcode<-findColours(class,plotclr)
+plot(incivility.join, col=colcode)
+
+
+### Regression Modeling Options
+
+denom<-incivility.join$TotPop 
+summary(denom)
+summary(incivility.join$Count_)
+
+m1<-glm(Count_~incivility.join$Avg_Incivi,family=poisson,data=incivility.join)
+
+m1
+summary(m1)
+
+m2<-glm(pop_adj~incivility.join$Avg_Incivi,family=poisson,data=incivility.join)
+m2
+summary(m2)
+
+##Want to use Kriged incivility values instead
+m3<-glm(pop_adj~OK.pred$predict,family = poisson,data = incivility.join)
